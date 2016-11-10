@@ -13,7 +13,7 @@ class APIModelCollection:
         self._get_url = get_url
 
     def list(self):
-        if self._items is None and self._list_url is not None:
+        if self._list_url is not None:
                 items = API.authenticated_get_request(
                     request_url=self._list_url,
                     token=self._api.token
@@ -48,6 +48,26 @@ class APIModelCollection:
             self._items.append(item)
         else:
             print("Item is not of type: {}".format(self._model))
+
+
+class APICollaboratorCollection(APIModelCollection):
+    def get(self, login):
+        if self._list_url is not None and self._get_url is not None:
+            self._get_url = self._get_url.format(login=login)
+
+            if self._items is None:
+                self._items = self.list()
+
+            if login in [collaborator.login for collaborator in self._items]:
+                item = API.authenticated_get_request(
+                        request_url=self._get_url,
+                        token=self._api.token
+                )
+                item_dict = item.json()
+                obj = self._model(api=self._api)
+                obj.set_data(data=item_dict)
+                return obj
+        return None
 
 
 class API:
@@ -110,19 +130,16 @@ class Model(object, metaclass=BaseModel):
     def save(self):
         return True
 
-    def __repr__(self):
-        return "Model"
-
 
 class APIModel(Model):
     api = ModelField(API)
 
 
 class User(APIModel):
-    name = CharField()
+    login = CharField()
 
     def __repr__(self):
-        return self.name
+        return self.login
 
 
 class Repository(APIModel):
@@ -131,11 +148,12 @@ class Repository(APIModel):
 
     @property
     def collaborators(self):
-        return APIModelCollection(
+        return APICollaboratorCollection(
             model=User,
             api=self.api,
-            list_url="",
-            get_url="")
+            list_url=settings.COLLABORATORS_LIST_URL.format(
+                full_name=self.full_name),
+            get_url=settings.COLLABORATOR_URL)
 
     def __repr__(self):
         return self.full_name

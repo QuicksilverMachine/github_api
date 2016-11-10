@@ -13,9 +13,6 @@ class BaseField:
     def deserialize(self):
         return self.data
 
-    def __repr__(self):
-        return str(self.data)
-
 
 class CharField(BaseField):
     default_value = ""
