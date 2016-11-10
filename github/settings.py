@@ -12,4 +12,4 @@ COLLABORATORS_LIST_URL = "http://api.github.com/repos/{full_name}/" \
                          "collaborators"
 COLLABORATOR_URL = "http://api.github.com/users/{login}"
 COLLABORATOR_ADD_URL = "http://api.github.com/repos/{full_name}/" \
-                       "collaborators/{{login}}"
+                       "collaborators/{login}"
