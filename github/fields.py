@@ -1,7 +1,7 @@
 class BaseField:
     default_value = None
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.data = self.default_value
 
     def set(self, data=None):
