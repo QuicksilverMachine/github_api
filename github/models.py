@@ -34,7 +34,7 @@ class API:
         """
         response_dict = response.json()
         message = response_dict['message']
-        if response_dict['errors'] is not None:
+        if "errors" in response_dict:
             errors = [r['message'] for r in response_dict['errors']]
             message += " - " + ', '.join(errors)
         raise exceptions.ResponseError(message)
