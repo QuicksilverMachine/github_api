@@ -56,3 +56,23 @@ class FloatField(BaseField):
             return self.default_value
         else:
             return float(self.data)
+
+
+class WrappedObjectField(BaseField):
+    def __init__(self, wrapped_class, related_name=None, **kwargs):
+        self._wrapped_class = wrapped_class
+        self._related_name = related_name
+        self._related_obj = None
+        BaseField.__init__(self, **kwargs)
+
+
+class ModelField(WrappedObjectField):
+    def deserialize(self):
+        if isinstance(self.data, self._wrapped_class):
+            obj = self.data
+        else:
+            obj = self._wrapped_class.from_dict(self.data or {})
+        # Set the related object to the related field
+        if self._related_name is not None:
+            setattr(obj, self._related_name, self._related_obj)
+        return obj
