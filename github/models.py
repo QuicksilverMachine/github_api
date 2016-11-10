@@ -90,8 +90,8 @@ class APIRepositoryCollection(APIModelCollection):
 
     def list(self):
         """
-
-        :return:
+        Returns list of repositories
+        :return: list of items
         """
         response = API.authenticated_get_request(
             request_url=settings.CURRENT_USER_REPOSITORIES_URL,
@@ -107,9 +107,9 @@ class APIRepositoryCollection(APIModelCollection):
 
     def get(self, full_name):
         """
-
-        :param full_name:
-        :return:
+        Returns repository from list that maches the full_name parameter
+        :param full_name: full_name of repository to find
+        :return: found repository or None
         """
         get_url = settings.REPOSITORY_URL.format(full_name=full_name)
         response = API.authenticated_get_request(
@@ -123,12 +123,11 @@ class APIRepositoryCollection(APIModelCollection):
 
 
 class APICollaboratorCollection(APIModelCollection):
-    """
-    """
+    """Class that defines a repository collaborator model collection"""
     def list(self):
         """
-
-        :return:
+        Returns list of collaborators
+        :return: list of items
         """
         response = API.authenticated_get_request(
             request_url=settings.COLLABORATORS_LIST_URL.format(
@@ -145,9 +144,9 @@ class APICollaboratorCollection(APIModelCollection):
 
     def get(self, login):
         """
-
-        :param login:
-        :return:
+        Returns collaborator from list that maches the login parameter
+        :param login: username of a collaborator
+        :return: found collaborator or None
         """
         get_url = settings.COLLABORATOR_URL.format(
             full_name=self.parent.full_name,
@@ -167,8 +166,7 @@ class APICollaboratorCollection(APIModelCollection):
         return None
 
     def add(self, item):
-        """
-
+        """Add collaborator to
         :param item:
         :return:
         """
@@ -183,8 +181,9 @@ class APICollaboratorCollection(APIModelCollection):
 
 
 class BaseModel(type):
-    """
+    """Metaclass for model definition
 
+        Adds all model fields to _fields attribute
     """
     def __new__(cls, name, bases, attrs):
         fields = {k: v for k, v in attrs.items() if isinstance(v, BaseField)}
@@ -193,8 +192,9 @@ class BaseModel(type):
 
 
 class Model(object, metaclass=BaseModel):
-    """
+    """Base model class
 
+        Used to define all models
     """
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -210,45 +210,36 @@ class Model(object, metaclass=BaseModel):
             super(Model, self).__setattr__(key, value)
 
     def to_dict(self):
-        """
-
-        :return:
+        """Return model's serialized dictionary representation
+        :return: dictionary
         """
         return dict((key, self._fields[key].serialize(getattr(self, key)))
                     for key in self._fields.keys() if hasattr(self, key))
 
     def to_json(self):
-        """
-
-        :return:
+        """Return model's serialized json representation
+        :return: json
         """
         return json.dumps(self.to_dict())
 
-    def set_data(self, data, is_json=False):
+    def set_data(self, data):
+        """Sets data to model fields
+        :param data: data to set
+        :param is_json: is input data in json format
         """
-
-        :param data:
-        :param is_json:
-        :return:
-        """
-        if is_json:
-            data = json.loads(data)
         for key in self._fields:
             if key in data:
                 setattr(self, key, data.get(key))
 
 
 class APIModel(Model):
-    """
-
+    """Base model for API objects
     """
     api = ModelField(API)
 
     def _save(self, save_url):
-        """
-
-        :param save_url:
-        :return:
+        """Update object on GitHub server
+        :param save_url: url to send save request to
         """
         response = API.authenticated_patch_request(save_url,
                                                    token=self.api.token,
@@ -256,15 +247,12 @@ class APIModel(Model):
 
 
 class User(APIModel):
-    """
-
-    """
+    """User model for API calls"""
     login = CharField()
 
     def save(self):
-        """
-
-        :return:
+        """Update authenticated user on GitHub server
+        :param save_url: url to send save request to
         """
         self._save(settings.AUTHENTICATED_USER)
 
@@ -273,28 +261,23 @@ class User(APIModel):
 
 
 class Repository(APIModel):
+    """Repository model for API calls"""
     name = CharField()
     full_name = CharField()
     description = CharField()
 
     def save(self):
-        """
-
-        :return:
+        """Update repository on GitHub server
+        :param save_url: url to send save request to
         """
         self._save(settings.REPOSITORY_URL.format(full_name=self.full_name))
 
     @property
     def collaborators(self):
-        """
-
-        :return:
+        """Returns list of repository collaborators
+        :return: collaborator collection object
         """
         return APICollaboratorCollection(api=self.api, parent=self)
 
     def __repr__(self):
         return self.full_name
-
-
-
-
