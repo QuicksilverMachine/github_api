@@ -6,7 +6,7 @@ from . import settings
 
 class APIModelCollection:
     def __init__(self, model, api, list_url, get_url):
-        self._items = None
+        self._items = []
         self._model = model
         self._api = api
         self._list_url = list_url
@@ -24,8 +24,6 @@ class APIModelCollection:
                     obj = self._model(api=self._api)
                     obj.set_data(data=item_dict)
                     self._items.append(obj)
-        else:
-            self._items = []
         return self._items
 
     def get(self, **kwargs):
@@ -51,13 +49,15 @@ class APIModelCollection:
 
 
 class APICollaboratorCollection(APIModelCollection):
+    def __init__(self, model, api, list_url, get_url, add_url):
+        super().__init__(model, api, list_url, get_url)
+        self._add_url = add_url
+
     def get(self, login):
         if self._list_url is not None and self._get_url is not None:
             self._get_url = self._get_url.format(login=login)
-
-            if self._items is None:
+            if len(self._items) is 0:
                 self._items = self.list()
-
             if login in [collaborator.login for collaborator in self._items]:
                 item = API.authenticated_get_request(
                         request_url=self._get_url,
@@ -69,6 +69,15 @@ class APICollaboratorCollection(APIModelCollection):
                 return obj
         return None
 
+    def add(self, item):
+        super().add(item)
+        if item in self._items:
+            if self._add_url is not None:
+                self._add_url = self._add_url.format(login=item.login)
+                API.authenticated_put_request(
+                        request_url=self._add_url,
+                        token=self._api.token
+                )
 
 class API:
     def __init__(self, token):
@@ -82,6 +91,12 @@ class API:
     def authenticated_get_request(request_url, token):
         headers = API.auth_headers(token)
         response = requests.get(request_url, params=headers)
+        return response
+
+    @staticmethod
+    def authenticated_put_request(request_url, token, data=None):
+        headers = API.auth_headers(token)
+        response = requests.put(url=request_url, data=data, params=headers)
         return response
 
     @property
@@ -153,7 +168,9 @@ class Repository(APIModel):
             api=self.api,
             list_url=settings.COLLABORATORS_LIST_URL.format(
                 full_name=self.full_name),
-            get_url=settings.COLLABORATOR_URL)
+            get_url=settings.COLLABORATOR_URL,
+            add_url=settings.COLLABORATOR_ADD_URL.format(
+                full_name=self.full_name))
 
     def __repr__(self):
         return self.full_name
