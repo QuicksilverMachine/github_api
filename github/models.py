@@ -79,6 +79,10 @@ class APICollaboratorCollection(APIModelCollection):
                         token=self._api.token
                 )
 
+    def save(self):
+        pass
+
+
 class API:
     def __init__(self, token):
         self.token = token
@@ -97,6 +101,12 @@ class API:
     def authenticated_put_request(request_url, token, data=None):
         headers = API.auth_headers(token)
         response = requests.put(url=request_url, data=data, params=headers)
+        return response
+
+    @staticmethod
+    def authenticated_patch_request(request_url, token, data=None):
+        headers = API.auth_headers(token)
+        response = requests.patch(url=request_url, data=data, params=headers)
         return response
 
     @property
@@ -135,6 +145,13 @@ class Model(object, metaclass=BaseModel):
         else:
             super(Model, self).__setattr__(key, value)
 
+    def to_dict(self):
+        return dict((key, self._fields[key].serialize(getattr(self, key)))
+                    for key in self._fields.keys() if hasattr(self, key))
+
+    def to_json(self):
+        return json.dumps(self.to_dict())
+
     def set_data(self, data, is_json=False):
         if is_json:
             data = json.loads(data)
@@ -142,24 +159,34 @@ class Model(object, metaclass=BaseModel):
             if key in data:
                 setattr(self, key, data.get(key))
 
-    def save(self):
-        return True
-
 
 class APIModel(Model):
     api = ModelField(API)
 
+    def _save(self, save_url):
+        response = API.authenticated_patch_request(save_url,
+                                                   token=self.api.token,
+                                                   data=self.to_json())
+        print(response.content)
+
 
 class User(APIModel):
     login = CharField()
+
+    def save(self):
+        self._save(settings.AUTHENTICATED_USER)
 
     def __repr__(self):
         return self.login
 
 
 class Repository(APIModel):
+    name = CharField()
     full_name = CharField()
     description = CharField()
+
+    def save(self):
+        self._save(settings.REPOSITORY_URL.format(full_name=self.full_name))
 
     @property
     def collaborators(self):
