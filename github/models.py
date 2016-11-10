@@ -33,6 +33,7 @@ class API:
         :param response: response object
         """
         response_dict = response.json()
+
         message = response_dict['message']
         if "errors" in response_dict:
             errors = [r['message'] for r in response_dict['errors']]
@@ -127,6 +128,10 @@ class APIModelCollection:
 
 class APIRepositoryCollection(APIModelCollection):
     """Class that defines a repository model collection"""
+    def __init__(self, api, parent=None):
+        super().__init__(api, parent)
+        self.list_url = settings.CURRENT_USER_REPOSITORIES_URL
+        self.get_url = settings.REPOSITORY_URL
 
     def list(self):
         """
@@ -134,7 +139,7 @@ class APIRepositoryCollection(APIModelCollection):
         :return: list of items
         """
         response = API.authenticated_get_request(
-            request_url=settings.CURRENT_USER_REPOSITORIES_URL,
+            request_url=self.list_url,
             token=self._api.token
         )
         if response.status_code != HTTPStatus.OK:
@@ -154,7 +159,7 @@ class APIRepositoryCollection(APIModelCollection):
         :param full_name: full_name of repository to find
         :return: found repository or None
         """
-        get_url = settings.REPOSITORY_URL.format(full_name=full_name)
+        get_url = self.get_url.format(full_name=full_name)
         response = API.authenticated_get_request(
                 request_url=get_url,
                 token=self._api.token
@@ -172,14 +177,19 @@ class APIRepositoryCollection(APIModelCollection):
 
 class APICollaboratorCollection(APIModelCollection):
     """Class that defines a repository collaborator model collection"""
+    def __init__(self, api, parent=None):
+        super().__init__(api, parent)
+        self.list_url = settings.COLLABORATORS_LIST_URL
+        self.get_url = settings.COLLABORATOR_URL
+        self.add_url = settings.COLLABORATOR_ADD_URL
+
     def list(self):
         """
         Returns list of collaborators
         :return: list of items
         """
         response = API.authenticated_get_request(
-            request_url=settings.COLLABORATORS_LIST_URL.format(
-                full_name=self.parent.full_name),
+            request_url=self.list_url.format(full_name=self.parent.full_name),
             token=self._api.token
         )
         if response.status_code == HTTPStatus.OK:
@@ -199,7 +209,7 @@ class APICollaboratorCollection(APIModelCollection):
         :param login: username of a collaborator
         :return: found collaborator or None
         """
-        get_url = settings.COLLABORATOR_URL.format(
+        get_url = self.get_url.format(
             full_name=self.parent.full_name,
             login=login
         )
@@ -223,7 +233,7 @@ class APICollaboratorCollection(APIModelCollection):
         """Add collaborator to repository
         :param collaborator: user to add to collaborators
         """
-        add_url = settings.COLLABORATOR_ADD_URL.format(
+        add_url = self.add_url.format(
             full_name=self.parent.full_name,
             login=collaborator.login)
         response = API.authenticated_put_request(
