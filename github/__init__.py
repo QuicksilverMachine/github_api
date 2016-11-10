@@ -1,1 +1,1 @@
-from .models import API
+from github.models import API

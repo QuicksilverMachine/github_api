@@ -2,9 +2,9 @@ from datetime import datetime
 import json
 from http import HTTPStatus
 import requests
-from .fields import BaseField, CharField, ModelField
-from . import settings
-from . import exceptions
+from github.fields import BaseField, CharField, ModelField
+from github import settings
+from github import exceptions
 
 
 class API:
