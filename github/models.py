@@ -336,6 +336,7 @@ class Repository(APIModel):
     name = CharField()
     full_name = CharField()
     description = CharField()
+    owner = ModelField(User)
 
     def save(self):
         """Update repository on GitHub server"""
