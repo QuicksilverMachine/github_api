@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import requests
 from .fields import BaseField, CharField, ModelField
@@ -59,13 +60,29 @@ class API:
         return response
 
     @property
-    def limit(self):
-        """Gets the remaining api request uses
-        :return: remaining uses
+    def rate_limits(self):
+        """Gets the api rate limits
+        :return: json rate limits
         """
         response = API.authenticated_get_request(settings.RATE_LIMIT_URL,
-                                              self.token)
-        return response.content
+                                                 self.token)
+        return response.json()
+
+    @property
+    def standard_requests_remaining(self):
+        """Gets the remaining standard api request uses
+        :return: remaining uses count
+        """
+        limits = self.rate_limits
+        return limits['resources']['core']['remaining']
+
+    @property
+    def next_rate_limit_reset(self):
+        """Gets the api rate limit reset time
+        :return: datetime object
+        """
+        limits = self.rate_limits
+        return datetime.fromtimestamp(int(limits['resources']['core']['reset']))
 
     @property
     def repos(self):
