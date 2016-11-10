@@ -1,8 +1,10 @@
 from datetime import datetime
 import json
+from http import HTTPStatus
 import requests
 from .fields import BaseField, CharField, ModelField
 from . import settings
+from . import exceptions
 
 
 class API:
@@ -23,6 +25,19 @@ class API:
         headers = settings.REQUEST_HEADERS
         headers['access_token'] = token
         return headers
+
+    @staticmethod
+    def raise_response_error(response):
+        """
+        Raises errors returned in response
+        :param response: response object
+        """
+        response_dict = response.json()
+        message = response_dict['message']
+        if response_dict['errors'] is not None:
+            errors = [r['message'] for r in response_dict['errors']]
+            message += " - " + ', '.join(errors)
+        raise exceptions.ResponseError(message)
 
     @staticmethod
     def authenticated_get_request(request_url, token):
@@ -66,7 +81,10 @@ class API:
         """
         response = API.authenticated_get_request(settings.RATE_LIMIT_URL,
                                                  self.token)
-        return response.json()
+        if response.status_code != HTTPStatus.OK:
+            API.raise_response_error(response)
+        else:
+            return response.json()
 
     @property
     def standard_requests_remaining(self):
@@ -74,7 +92,8 @@ class API:
         :return: remaining uses count
         """
         limits = self.rate_limits
-        return limits['resources']['core']['remaining']
+        return (limits['resources']['core']['remaining'] if limits is not None
+                else None)
 
     @property
     def next_rate_limit_reset(self):
@@ -82,7 +101,9 @@ class API:
         :return: datetime object
         """
         limits = self.rate_limits
-        return datetime.fromtimestamp(int(limits['resources']['core']['reset']))
+        return (datetime.fromtimestamp(
+            int(limits['resources']['core']['reset'])) if limits is not None
+            else None)
 
     @property
     def repositories(self):
@@ -116,13 +137,16 @@ class APIRepositoryCollection(APIModelCollection):
             request_url=settings.CURRENT_USER_REPOSITORIES_URL,
             token=self._api.token
         )
-        item_dicts = response.json()
-        self._items = []
-        for item_dict in item_dicts:
-            obj = Repository(api=self._api)
-            obj.set_data(data=item_dict)
-            self._items.append(obj)
-        return self._items
+        if response.status_code != HTTPStatus.OK:
+            API.raise_response_error(response)
+        else:
+            item_dicts = response.json()
+            self._items = []
+            for item_dict in item_dicts:
+                obj = Repository(api=self._api)
+                obj.set_data(data=item_dict)
+                self._items.append(obj)
+            return self._items
 
     def get(self, full_name):
         """
@@ -135,10 +159,15 @@ class APIRepositoryCollection(APIModelCollection):
                 request_url=get_url,
                 token=self._api.token
         )
-        item_dict = response.json()
-        obj = Repository(api=self._api)
-        obj.set_data(data=item_dict)
-        return obj
+        if response.status_code == HTTPStatus.OK:
+            item_dict = response.json()
+            obj = Repository(api=self._api)
+            obj.set_data(data=item_dict)
+            return obj
+        elif response.status_code == HTTPStatus.NOT_FOUND:
+            return None
+        else:
+            API.raise_response_error(response)
 
 
 class APICollaboratorCollection(APIModelCollection):
@@ -153,13 +182,16 @@ class APICollaboratorCollection(APIModelCollection):
                 full_name=self.parent.full_name),
             token=self._api.token
         )
-        item_dicts = response.json()
-        self._items = []
-        for item_dict in item_dicts:
-            obj = User(api=self._api)
-            obj.set_data(data=item_dict)
-            self._items.append(obj)
-        return self._items
+        if response.status_code == HTTPStatus.OK:
+            item_dicts = response.json()
+            self._items = []
+            for item_dict in item_dicts:
+                obj = User(api=self._api)
+                obj.set_data(data=item_dict)
+                self._items.append(obj)
+            return self._items
+        else:
+            API.raise_response_error(response)
 
     def get(self, login):
         """
@@ -178,24 +210,28 @@ class APICollaboratorCollection(APIModelCollection):
                     request_url=get_url,
                     token=self._api.token
             )
-            item_dict = response.json()
-            obj = User(api=self._api)
-            obj.set_data(data=item_dict)
-            return obj
+            if response.status_code == HTTPStatus.OK:
+                item_dict = response.json()
+                obj = User(api=self._api)
+                obj.set_data(data=item_dict)
+                return obj
+            else:
+                API.raise_response_error(response)
         return None
 
     def add(self, collaborator):
         """Add collaborator to repository
         :param collaborator: user to add to collaborators
         """
-        if collaborator in self._items:
-            add_url = settings.COLLABORATOR_ADD_URL.format(
-                full_name=self.parent.full_name,
-                login=collaborator.login)
-            response = API.authenticated_put_request(
-                    request_url=add_url,
-                    token=self._api.token
-            )
+        add_url = settings.COLLABORATOR_ADD_URL.format(
+            full_name=self.parent.full_name,
+            login=collaborator.login)
+        response = API.authenticated_put_request(
+                request_url=add_url,
+                token=self._api.token
+        )
+        if response.status_code != HTTPStatus.OK:
+            API.raise_response_error(response)
 
 
 class BaseModel(type):
@@ -262,6 +298,8 @@ class APIModel(Model):
         response = API.authenticated_patch_request(save_url,
                                                    token=self.api.token,
                                                    data=self.to_json())
+        if response.status_code != HTTPStatus.OK:
+            API.raise_response_error(response)
 
 
 class User(APIModel):
