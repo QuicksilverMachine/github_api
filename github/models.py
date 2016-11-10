@@ -286,6 +286,12 @@ class Model(object, metaclass=BaseModel):
         """
         return json.dumps(self.to_dict())
 
+    @classmethod
+    def deserialize(cls, data):
+        instance = cls()
+        instance.set_data(data)
+        return instance
+
     def set_data(self, data):
         """Sets data to model fields
         :param data: data to set
