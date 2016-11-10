@@ -1,8 +1,5 @@
 class BaseField:
-    """Class for defining the base model field
-
-        All other fields inherit from BaseField
-    """
+    """Class for defining the base model field"""
     default_value = None
 
     def __init__(self, **kwargs):

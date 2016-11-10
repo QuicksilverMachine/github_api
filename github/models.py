@@ -9,7 +9,7 @@ class API:
     """Class that defines the API endpoint
 
         Sets the token value during initialization and uses it to perform
-        requests on the Github API
+        requests on the GitHub API
     """
     def __init__(self, token):
         self.token = token
@@ -85,7 +85,7 @@ class API:
         return datetime.fromtimestamp(int(limits['resources']['core']['reset']))
 
     @property
-    def repos(self):
+    def repositories(self):
         """Returns list of repositories the authenticated user has access to
         :return: repository collection object
         """
@@ -126,7 +126,7 @@ class APIRepositoryCollection(APIModelCollection):
 
     def get(self, full_name):
         """
-        Returns repository from list that maches the full_name parameter
+        Returns repository from list that matches the full_name parameter
         :param full_name: full_name of repository to find
         :return: found repository or None
         """
@@ -163,7 +163,7 @@ class APICollaboratorCollection(APIModelCollection):
 
     def get(self, login):
         """
-        Returns collaborator from list that maches the login parameter
+        Returns collaborator from list that matches the login parameter
         :param login: username of a collaborator
         :return: found collaborator or None
         """
@@ -184,15 +184,14 @@ class APICollaboratorCollection(APIModelCollection):
             return obj
         return None
 
-    def add(self, item):
-        """Add collaborator to
-        :param item:
-        :return:
+    def add(self, collaborator):
+        """Add collaborator to repository
+        :param collaborator: user to add to collaborators
         """
-        if item in self._items:
+        if collaborator in self._items:
             add_url = settings.COLLABORATOR_ADD_URL.format(
                 full_name=self.parent.full_name,
-                login=item.login)
+                login=collaborator.login)
             response = API.authenticated_put_request(
                     request_url=add_url,
                     token=self._api.token
@@ -271,7 +270,6 @@ class User(APIModel):
 
     def save(self):
         """Update authenticated user on GitHub server
-        :param save_url: url to send save request to
         """
         self._save(settings.AUTHENTICATED_USER)
 
@@ -286,9 +284,7 @@ class Repository(APIModel):
     description = CharField()
 
     def save(self):
-        """Update repository on GitHub server
-        :param save_url: url to send save request to
-        """
+        """Update repository on GitHub server"""
         self._save(settings.REPOSITORY_URL.format(full_name=self.full_name))
 
     @property
