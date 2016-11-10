@@ -288,6 +288,10 @@ class Model(object, metaclass=BaseModel):
 
     @classmethod
     def deserialize(cls, data):
+        """Return deserialized model instance
+        :param data: data to deserialize
+        :return: cls model instance
+        """
         instance = cls()
         instance.set_data(data)
         return instance
