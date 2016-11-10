@@ -14,12 +14,14 @@ class API:
         self.token = token
 
     @staticmethod
-    def auth_headers(token):
-        """Returns authentication headers for requests
+    def _auth_headers(token):
+        """Returns headers for requests
         :param token: user access token
         :return: dictionary containing the authentication headers
         """
-        return {'access_token': token}
+        headers = settings.REQUEST_HEADERS
+        headers['access_token'] = token
+        return headers
 
     @staticmethod
     def authenticated_get_request(request_url, token):
@@ -28,7 +30,7 @@ class API:
         :param token: user access token
         :return: get request response
         """
-        headers = API.auth_headers(token)
+        headers = API._auth_headers(token)
         response = requests.get(request_url, params=headers)
         return response
 
@@ -40,7 +42,7 @@ class API:
         :param data: data to be sent
         :return: get request response
         """
-        headers = API.auth_headers(token)
+        headers = API._auth_headers(token)
         response = requests.put(url=request_url, data=data, params=headers)
         return response
 
@@ -52,7 +54,7 @@ class API:
         :param data: data to be sent
         :return: get request response
         """
-        headers = API.auth_headers(token)
+        headers = API._auth_headers(token)
         response = requests.patch(url=request_url, data=data, params=headers)
         return response
 

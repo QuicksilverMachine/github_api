@@ -1,3 +1,7 @@
+REQUEST_HEADERS = {
+    'accept': 'application/vnd.github.v3+json'
+}
+
 RATE_LIMIT_URL = "https://api.github.com/rate_limit"
 
 AUTHENTICATED_USER = "https://api.github.com/user"
