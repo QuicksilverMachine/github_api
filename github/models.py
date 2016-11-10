@@ -273,18 +273,18 @@ class Model(object, metaclass=BaseModel):
         else:
             super(Model, self).__setattr__(key, value)
 
-    def to_dict(self):
+    def serialize_to_dict(self):
         """Return model's serialized dictionary representation
         :return: dictionary
         """
         return dict((key, self._fields[key].serialize(getattr(self, key)))
                     for key in self._fields.keys() if hasattr(self, key))
 
-    def to_json(self):
+    def serialize_to_json(self):
         """Return model's serialized json representation
         :return: json
         """
-        return json.dumps(self.to_dict())
+        return json.dumps(self.serialize_to_dict())
 
     @classmethod
     def deserialize(cls, data):
@@ -311,9 +311,10 @@ class APIModel(Model):
         """Update object on GitHub server
         :param save_url: url to send save request to
         """
-        response = API.authenticated_patch_request(save_url,
-                                                   token=self.api.token,
-                                                   data=self.to_json())
+        response = API.authenticated_patch_request(
+            save_url,
+            token=self.api.token,
+            data=self.serialize_to_json())
         if response.status_code != HTTPStatus.OK:
             API.raise_response_error(response)
 

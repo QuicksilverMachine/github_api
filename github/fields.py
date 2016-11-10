@@ -86,7 +86,7 @@ class ModelField(WrappedObjectField):
         if isinstance(self.data, self._wrapped_class):
             obj = self.data
         else:
-            obj = self._wrapped_class.from_dict(self.data or {})
+            obj = self._wrapped_class.deserialize(self.data or {})
         # Set the related object to the related field
         if self._related_name is not None:
             setattr(obj, self._related_name, self._related_obj)
