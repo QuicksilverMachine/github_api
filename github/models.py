@@ -239,10 +239,10 @@ class BaseModel(type):
 
         Adds all model fields to _fields attribute
     """
-    def __new__(cls, name, bases, attrs):
+    def __new__(mcs, name, bases, attrs):
         fields = {k: v for k, v in attrs.items() if isinstance(v, BaseField)}
         attrs['_fields'] = fields
-        return type.__new__(cls, name, bases, attrs)
+        return type.__new__(mcs, name, bases, attrs)
 
 
 class Model(object, metaclass=BaseModel):
