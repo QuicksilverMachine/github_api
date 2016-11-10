@@ -32,9 +32,9 @@ class API:
 
     @property
     def limit(self):
-        limit = API.authenticated_get_request(settings.RATE_LIMIT_URL,
+        response = API.authenticated_get_request(settings.RATE_LIMIT_URL,
                                               self.token)
-        return limit.content
+        return response.content
 
     @property
     def repos(self):
@@ -76,12 +76,12 @@ class APIRepositoryCollection(APIModelCollection):
 
 class APICollaboratorCollection(APIModelCollection):
     def list(self):
-        items = API.authenticated_get_request(
+        response = API.authenticated_get_request(
             request_url=settings.COLLABORATORS_LIST_URL.format(
                 full_name=self.parent.full_name),
             token=self._api.token
         )
-        item_dicts = items.json()
+        item_dicts = response.json()
         self._items = []
         for item_dict in item_dicts:
             obj = User(api=self._api)
@@ -97,11 +97,11 @@ class APICollaboratorCollection(APIModelCollection):
         if len(self._items) is 0:
             self._items = self.list()
         if login in [collaborator.login for collaborator in self._items]:
-            item = API.authenticated_get_request(
+            response = API.authenticated_get_request(
                     request_url=get_url,
                     token=self._api.token
             )
-            item_dict = item.json()
+            item_dict = response.json()
             obj = User(api=self._api)
             obj.set_data(data=item_dict)
             return obj
@@ -112,7 +112,7 @@ class APICollaboratorCollection(APIModelCollection):
             add_url = settings.COLLABORATOR_ADD_URL.format(
                 full_name=self.parent.full_name,
                 login=item.login)
-            API.authenticated_put_request(
+            response = API.authenticated_put_request(
                     request_url=add_url,
                     token=self._api.token
             )
@@ -158,9 +158,9 @@ class APIModel(Model):
     api = ModelField(API)
 
     def _save(self, save_url):
-        API.authenticated_patch_request(save_url,
-                                        token=self.api.token,
-                                        data=self.to_json())
+        response = API.authenticated_patch_request(save_url,
+                                                   token=self.api.token,
+                                                   data=self.to_json())
 
 
 class User(APIModel):
