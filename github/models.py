@@ -295,7 +295,6 @@ class Model(object, metaclass=BaseModel):
     def set_data(self, data):
         """Sets data to model fields
         :param data: data to set
-        :param is_json: is input data in json format
         """
         for key in self._fields:
             if key in data:
