@@ -4,85 +4,6 @@ from .fields import BaseField, CharField, ModelField
 from . import settings
 
 
-class APIModelCollection:
-    def __init__(self, model, api, list_url, get_url):
-        self._items = []
-        self._model = model
-        self._api = api
-        self._list_url = list_url
-        self._get_url = get_url
-
-    def list(self):
-        if self._list_url is not None:
-                items = API.authenticated_get_request(
-                    request_url=self._list_url,
-                    token=self._api.token
-                )
-                item_dicts = items.json()
-                self._items = []
-                for item_dict in item_dicts:
-                    obj = self._model(api=self._api)
-                    obj.set_data(data=item_dict)
-                    self._items.append(obj)
-        return self._items
-
-    def get(self, **kwargs):
-        if self._get_url is not None:
-            keys = {key: value for key, value in kwargs.items()}
-            self._get_url = self._get_url.format(**keys)
-            item = API.authenticated_get_request(
-                    request_url=self._get_url,
-                    token=self._api.token
-            )
-            item_dict = item.json()
-            obj = self._model(api=self._api)
-            obj.set_data(data=item_dict)
-            return obj
-        else:
-            return None
-
-    def add(self, item):
-        if isinstance(item, self._model):
-            self._items.append(item)
-        else:
-            print("Item is not of type: {}".format(self._model))
-
-
-class APICollaboratorCollection(APIModelCollection):
-    def __init__(self, model, api, list_url, get_url, add_url):
-        super().__init__(model, api, list_url, get_url)
-        self._add_url = add_url
-
-    def get(self, login):
-        if self._list_url is not None and self._get_url is not None:
-            self._get_url = self._get_url.format(login=login)
-            if len(self._items) is 0:
-                self._items = self.list()
-            if login in [collaborator.login for collaborator in self._items]:
-                item = API.authenticated_get_request(
-                        request_url=self._get_url,
-                        token=self._api.token
-                )
-                item_dict = item.json()
-                obj = self._model(api=self._api)
-                obj.set_data(data=item_dict)
-                return obj
-        return None
-
-    def add(self, item):
-        super().add(item)
-        if item in self._items:
-            if self._add_url is not None:
-                self._add_url = self._add_url.format(login=item.login)
-                API.authenticated_put_request(
-                        request_url=self._add_url,
-                        token=self._api.token
-                )
-
-    def save(self):
-        pass
-
-
 class API:
     def __init__(self, token):
         self.token = token
@@ -117,11 +38,84 @@ class API:
 
     @property
     def repos(self):
-        return APIModelCollection(
-            model=Repository,
-            api=self,
-            list_url=settings.CURRENT_USER_REPOSITORIES_URL,
-            get_url=settings.REPOSITORY_URL)
+        return APIRepositoryCollection(api=self, parent=self)
+
+
+class APIModelCollection:
+    def __init__(self, api, parent=None):
+        self._items = []
+        self._api = api
+        self.parent = parent
+
+
+class APIRepositoryCollection(APIModelCollection):
+    def list(self):
+        response = API.authenticated_get_request(
+            request_url=settings.CURRENT_USER_REPOSITORIES_URL,
+            token=self._api.token
+        )
+        item_dicts = response.json()
+        self._items = []
+        for item_dict in item_dicts:
+            obj = Repository(api=self._api)
+            obj.set_data(data=item_dict)
+            self._items.append(obj)
+        return self._items
+
+    def get(self, full_name):
+        get_url = settings.REPOSITORY_URL.format(full_name=full_name)
+        response = API.authenticated_get_request(
+                request_url=get_url,
+                token=self._api.token
+        )
+        item_dict = response.json()
+        obj = Repository(api=self._api)
+        obj.set_data(data=item_dict)
+        return obj
+
+
+class APICollaboratorCollection(APIModelCollection):
+    def list(self):
+        items = API.authenticated_get_request(
+            request_url=settings.COLLABORATORS_LIST_URL.format(
+                full_name=self.parent.full_name),
+            token=self._api.token
+        )
+        item_dicts = items.json()
+        self._items = []
+        for item_dict in item_dicts:
+            obj = User(api=self._api)
+            obj.set_data(data=item_dict)
+            self._items.append(obj)
+        return self._items
+
+    def get(self, login):
+        get_url = settings.COLLABORATOR_URL.format(
+            full_name=self.parent.full_name,
+            login=login
+        )
+        if len(self._items) is 0:
+            self._items = self.list()
+        if login in [collaborator.login for collaborator in self._items]:
+            item = API.authenticated_get_request(
+                    request_url=get_url,
+                    token=self._api.token
+            )
+            item_dict = item.json()
+            obj = User(api=self._api)
+            obj.set_data(data=item_dict)
+            return obj
+        return None
+
+    def add(self, item):
+        if item in self._items:
+            add_url = settings.COLLABORATOR_ADD_URL.format(
+                full_name=self.parent.full_name,
+                login=item.login)
+            API.authenticated_put_request(
+                    request_url=add_url,
+                    token=self._api.token
+            )
 
 
 class BaseModel(type):
@@ -164,10 +158,9 @@ class APIModel(Model):
     api = ModelField(API)
 
     def _save(self, save_url):
-        response = API.authenticated_patch_request(save_url,
-                                                   token=self.api.token,
-                                                   data=self.to_json())
-        print(response.content)
+        API.authenticated_patch_request(save_url,
+                                        token=self.api.token,
+                                        data=self.to_json())
 
 
 class User(APIModel):
@@ -190,14 +183,11 @@ class Repository(APIModel):
 
     @property
     def collaborators(self):
-        return APICollaboratorCollection(
-            model=User,
-            api=self.api,
-            list_url=settings.COLLABORATORS_LIST_URL.format(
-                full_name=self.full_name),
-            get_url=settings.COLLABORATOR_URL,
-            add_url=settings.COLLABORATOR_ADD_URL.format(
-                full_name=self.full_name))
+        return APICollaboratorCollection(api=self.api, parent=self)
 
     def __repr__(self):
         return self.full_name
+
+
+
+
