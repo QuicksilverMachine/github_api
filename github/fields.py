@@ -91,3 +91,6 @@ class ModelField(WrappedObjectField):
         if self._related_name is not None:
             setattr(obj, self._related_name, self._related_obj)
         return obj
+
+    def serialize(self, model_instance):
+        return model_instance.serialize_to_dict()
