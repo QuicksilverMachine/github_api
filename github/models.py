@@ -303,6 +303,8 @@ class Model(object, metaclass=BaseModel):
         for key in self._fields:
             if key in data:
                 setattr(self, key, data.get(key))
+            else:
+                setattr(self, key, None)
 
 
 class APIModel(Model):
